@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DatabaseQueryApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5b050dfa21c28f4327635cd73f86acd2ecd5d3bc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae646def0f1c5983949f46603e35b2f3d8d8ff8f")]
 [assembly: System.Reflection.AssemblyProductAttribute("DatabaseQueryApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DatabaseQueryApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
