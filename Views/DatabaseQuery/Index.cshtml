@@ -1,0 +1,371 @@
+@model DatabaseQueryApp.Models.DatabaseQueryModel
+
+@{
+    ViewData["Title"] = "Database Query Tool";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Database Query Tool</h2>
+                <div class="text-muted">
+                    <small>
+                        <i class="fas fa-clock"></i> 
+                        Current Time: <span id="currentTime">2025-07-13 07:00:30 UTC</span>
+                        <br />
+                        <i class="fas fa-user"></i> 
+                        User: <strong>imgsn</strong>
+                    </small>
+                </div>
+            </div>
+            
+            <form method="post" id="queryForm">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Database Connection</h5>
+                        <button type="submit" 
+                                formaction="@Url.Action("Clear")" 
+                                class="btn btn-outline-secondary btn-sm"
+                                title="Clear all form data">
+                            <i class="fas fa-eraser"></i> Clear All
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label asp-for="ConnectionString" class="form-label"></label>
+                            <div class="input-group">
+                                <textarea asp-for="ConnectionString" 
+                                        class="form-control" 
+                                        rows="3" 
+                                        placeholder="Server=localhost;Database=YourDatabase;Integrated Security=true;TrustServerCertificate=true;"
+                                        required></textarea>
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        onclick="clearConnectionString()"
+                                        title="Clear connection string">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="ConnectionString" class="text-danger"></span>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" 
+                                    formaction="@Url.Action("TestConnection")" 
+                                    class="btn btn-primary">
+                                <i class="fas fa-plug"></i> Test Connection
+                            </button>
+                            
+                            <div class="dropdown">
+                                <button class="btn btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-lightbulb"></i> Examples
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="setConnectionExample('local')">Local SQL Server</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="setConnectionExample('auth')">SQL Server Authentication</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="setConnectionExample('express')">SQL Server Express</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(Model.ConnectionMessage))
+                        {
+                            <div class="mt-3 alert @(Model.IsConnected ? "alert-success" : "alert-danger")">
+                                <i class="fas @(Model.IsConnected ? "fa-check-circle" : "fa-exclamation-circle")"></i>
+                                @Model.ConnectionMessage
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.IsConnected)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">SQL Query</h5>
+                            <button type="button" 
+                                    class="btn btn-outline-secondary btn-sm"
+                                    onclick="clearSqlQuery()"
+                                    title="Clear SQL query">
+                                <i class="fas fa-eraser"></i> Clear Query
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group mb-3">
+                                <label asp-for="SqlQuery" class="form-label"></label>
+                                <textarea asp-for="SqlQuery" 
+                                        class="form-control" 
+                                        rows="6" 
+                                        placeholder="Examples:&#10;SELECT * FROM Users&#10;INSERT INTO Users (Name, Email) VALUES ('John', 'john@example.com')&#10;UPDATE Users SET Email = 'newemail@example.com' WHERE Id = 1&#10;DELETE FROM Users WHERE Id = 1"
+                                        required></textarea>
+                                <span asp-validation-for="SqlQuery" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="submit" 
+                                        formaction="@Url.Action("ExecuteQuery")" 
+                                        class="btn btn-success">
+                                    <i class="fas fa-play"></i> Execute Query
+                                </button>
+                                
+                                @if (Model.IsSelectQuery && Model.QueryResults != null && Model.QueryResults.Any())
+                                {
+                                    <button type="submit" 
+                                            formaction="@Url.Action("ExportToExcel")" 
+                                            class="btn btn-info">
+                                        <i class="fas fa-file-excel"></i> Export to Excel
+                                    </button>
+                                }
+                                
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-code"></i> Query Examples
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('select')">SELECT Query</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('insert')">INSERT Query</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('update')">UPDATE Query</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('delete')">DELETE Query</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('create')">CREATE TABLE</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setSqlExample('info')">Database Info</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </form>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>Error:</strong> @Model.ErrorMessage
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.ExecutionMessage))
+            {
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    @Model.ExecutionMessage
+                    
+                    @if (!Model.IsSelectQuery)
+                    {
+                        <br />
+                        <strong>Affected Rows:</strong> @Model.AffectedRows
+                    }
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+
+            @if (Model.IsSelectQuery && Model.QueryResults != null && Model.QueryResults.Any())
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Query Results</h5>
+                        <div>
+                            <span class="badge bg-secondary me-2">@Model.QueryResults.Count rows</span>
+                            <span class="badge bg-info">@Model.ExecutionTime.TotalMilliseconds ms</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        @foreach (var column in Model.ColumnNames)
+                                        {
+                                            <th>@column</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.QueryResults)
+                                    {
+                                        <tr>
+                                            @foreach (var column in Model.ColumnNames)
+                                            {
+                                                <td>@(row[column]?.ToString() ?? "<null>")</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (Model.IsSelectQuery && Model.QueryResults != null && !Model.QueryResults.Any() && string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>No Results:</strong> SELECT query executed successfully but returned no rows.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            else if (!Model.IsSelectQuery && !string.IsNullOrEmpty(Model.ExecutionMessage))
+            {
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle"></i> Query Executed Successfully
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Execution Summary:</h6>
+                                <ul class="list-unstyled">
+                                    <li><strong>Query Type:</strong> Non-SELECT (INSERT/UPDATE/DELETE/etc.)</li>
+                                    <li><strong>Affected Rows:</strong> <span class="badge bg-primary">@Model.AffectedRows</span></li>
+                                    <li><strong>Execution Time:</strong> <span class="badge bg-info">@Model.ExecutionTime.TotalMilliseconds ms</span></li>
+                                    <li><strong>Status:</strong> <span class="badge bg-success">Completed</span></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Performance Info:</h6>
+                                <div class="progress mb-2">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%">
+                                        Completed
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    @if (Model.AffectedRows > 0)
+                                    {
+                                        <span>Operation completed successfully with @Model.AffectedRows row(s) modified.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Operation completed successfully with no rows affected.</span>
+                                    }
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Update current time every second
+        function updateCurrentTime() {
+            const now = new Date();
+            const utcTime = now.toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+            document.getElementById('currentTime').textContent = utcTime;
+        }
+        
+        // Update time immediately and then every second
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+
+        // Clear functions
+        function clearConnectionString() {
+            document.getElementById('ConnectionString').value = '';
+            document.getElementById('ConnectionString').focus();
+        }
+
+        function clearSqlQuery() {
+            document.getElementById('SqlQuery').value = '';
+            document.getElementById('SqlQuery').focus();
+        }
+
+        // Connection string examples
+        function setConnectionExample(type) {
+            const connectionField = document.getElementById('ConnectionString');
+            
+            switch(type) {
+                case 'local':
+                    connectionField.value = 'Server=localhost;Database=YourDatabase;Integrated Security=true;TrustServerCertificate=true;';
+                    break;
+                case 'auth':
+                    connectionField.value = 'Server=localhost;Database=YourDatabase;User Id=sa;Password=yourpassword;TrustServerCertificate=true;';
+                    break;
+                case 'express':
+                    connectionField.value = 'Server=localhost\\SQLEXPRESS;Database=YourDatabase;Integrated Security=true;TrustServerCertificate=true;';
+                    break;
+            }
+        }
+
+        // SQL query examples
+        function setSqlExample(type) {
+            const sqlField = document.getElementById('SqlQuery');
+            
+            switch(type) {
+                case 'select':
+                    sqlField.value = 'SELECT TOP 10 * FROM sys.tables ORDER BY name';
+                    break;
+                case 'insert':
+                    sqlField.value = 'INSERT INTO Users (Name, Email, CreatedDate)\nVALUES (\'John Doe\', \'john@example.com\', GETDATE())';
+                    break;
+                case 'update':
+                    sqlField.value = 'UPDATE Users \nSET Email = \'newemail@example.com\', ModifiedDate = GETDATE()\nWHERE Id = 1';
+                    break;
+                case 'delete':
+                    sqlField.value = 'DELETE FROM Users WHERE Id = 1';
+                    break;
+                case 'create':
+                    sqlField.value = 'CREATE TABLE TestTable (\n    Id INT PRIMARY KEY IDENTITY(1,1),\n    Name NVARCHAR(100) NOT NULL,\n    Email NVARCHAR(255),\n    CreatedDate DATETIME2 DEFAULT GETDATE()\n)';
+                    break;
+                case 'info':
+                    sqlField.value = 'SELECT \n    DB_NAME() as DatabaseName,\n    @@VERSION as SQLVersion,\n    GETDATE() as CurrentDateTime,\n    USER_NAME() as CurrentUser';
+                    break;
+            }
+            
+            // Auto-resize textarea
+            sqlField.style.height = 'auto';
+            sqlField.style.height = sqlField.scrollHeight + 'px';
+        }
+
+        // Auto-resize textareas
+        document.querySelectorAll('textarea').forEach(function(textarea) {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+        });
+
+        // Show confirmation for potentially dangerous queries
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const sqlQuery = document.getElementById('SqlQuery')?.value.trim().toUpperCase() || '';
+            const dangerousPatterns = ['DROP', 'TRUNCATE', 'DELETE FROM', 'UPDATE'];
+            
+            if (e.submitter && e.submitter.textContent.includes('Execute Query')) {
+                for (let pattern of dangerousPatterns) {
+                    if (sqlQuery.includes(pattern)) {
+                        if (!confirm(`Warning: This query contains "${pattern}" which may modify or delete data. Are you sure you want to execute it?`)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl + Enter to execute query
+            if (e.ctrlKey && e.key === 'Enter') {
+                const executeBtn = document.querySelector('button[formaction*="ExecuteQuery"]');
+                if (executeBtn) {
+                    executeBtn.click();
+                }
+            }
+            
+            // Ctrl + Shift + C to clear all
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                const clearBtn = document.querySelector('button[formaction*="Clear"]');
+                if (clearBtn) {
+                    clearBtn.click();
+                }
+            }
+        });
+    </script>
+}
